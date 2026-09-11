@@ -1,5 +1,26 @@
 import XCTest
+import AppKit
 @testable import WMRecorder
+
+final class TerminationTests: XCTestCase {
+    @MainActor func testQuitDuringRecordingTransitionKeepsApplicationAlive() {
+        let model = RecorderModel.shared
+        let previous = (model.recording, model.busy, model.testRunning, model.error)
+        defer { (model.recording, model.busy, model.testRunning, model.error) = previous }
+        model.recording = true; model.busy = true; model.testRunning = false
+        XCTAssertEqual(AppDelegate().applicationShouldTerminate(NSApplication.shared), .terminateCancel)
+        XCTAssertTrue(model.recording)
+        XCTAssertTrue(model.busy)
+    }
+    @MainActor func testQuitDuringActiveDeviceTestIsRejected() {
+        let model = RecorderModel.shared
+        let previous = (model.recording, model.busy, model.testRunning, model.error)
+        defer { (model.recording, model.busy, model.testRunning, model.error) = previous }
+        model.recording = true; model.busy = false; model.testRunning = true
+        XCTAssertEqual(AppDelegate().applicationShouldTerminate(NSApplication.shared), .terminateCancel)
+        XCTAssertTrue(model.recording)
+    }
+}
 
 final class RecorderTests: XCTestCase {
     func testAudioOnlyCannotBeMuted() { var o = RecordingOptions(); o.mode = .audio; o.audioLayout = .mute; XCTAssertThrowsError(try o.validate()) }

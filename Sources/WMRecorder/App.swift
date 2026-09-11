@@ -93,8 +93,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         MainActor.assumeIsolated {
             let model = RecorderModel.shared
-            if model.recording { Task { await model.stop(); NSApp.reply(toApplicationShouldTerminate: true) }; return .terminateLater }
             if model.busy || model.testRunning { model.error = "正在保存、导出或测试，请完成后再退出。"; return .terminateCancel }
+            if model.recording {
+                Task {
+                    await model.stop()
+                    NSApp.reply(toApplicationShouldTerminate: !model.recording && !model.busy)
+                }
+                return .terminateLater
+            }
             return .terminateNow
         }
     }
